@@ -1,0 +1,33 @@
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============ 虚拟环境 ============
+venv/
+.venv/
+env/
+
+# ============ 运行产物（自动生成，不提交）============
+# Allure 结果和报告、运行日志都是每次跑出来的，不进版本库。
+# 如果要把报告放进仓库给面试官看，用单文件模式导出后单独提交：
+#   allure generate report/allure-results -o report/single --single-file
+report/
+log/
+
+# ============ IDE ============
+.idea/
+.vscode/
+*.swp
+
+# ============ 系统 ============
+Thumbs.db
+Desktop.ini
+
+# ============ 说明 ============
+# config/config.yaml 里的密码是若依官方默认的 admin/admin123（公开信息），
+# 所以可以提交。如果以后换成真实环境的账号密码，请改为忽略该文件，
+# 用环境变量或 CI 密钥注入。

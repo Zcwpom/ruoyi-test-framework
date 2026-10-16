@@ -1,0 +1,96 @@
+# ============================================================
+# 用户模块测试数据（数据驱动）
+#
+# 【占位符】
+#   {uniq}      -> 8 位十六进制唯一后缀，用于 userName / email
+#   {uniq_num}  -> 8 位数字唯一后缀，用于 phonenumber
+#
+# ★ 关键教训：若依的 sys_user 对 3 个字段做唯一性校验
+#     userName / phonenumber / email
+#   只唯一化 userName 是不够的 —— 手机号照样会撞，
+#   撞了以后返回 500，会让本该 xfail 的用例变成 xpass（假通过）。
+#   凡是系统做唯一校验的字段，都必须唯一化。
+#
+# 【xfail】
+#   标记已发现的缺陷：期望被拒绝但系统允许。
+#   显示为 xfailed（黄），保留缺陷记录，不让套件长期变红。
+#   开发修复后会自动变 xpassed，提醒更新数据。
+# ============================================================
+
+add_user:
+  # ---------------- 正常场景 ----------------
+  - desc: "正常新增用户"
+    data:
+      userName: "autotest_{uniq}"
+      nickName: "YAML新增01"
+      password: "Test@123456"
+      phonenumber: "138{uniq_num}"            # 11 位，唯一
+      email: "autotest_{uniq}@test.com"       # 唯一
+      status: "0"
+    expect_code: 200
+
+  # ---------------- 服务端已有校验的场景 ----------------
+  - desc: "用户名为空"
+    data:
+      userName: ""
+      nickName: "空用户名"
+      password: "Test@123456"
+    expect_code: 500
+
+  - desc: "用户名超长（超过 30 字符）"
+    data:
+      userName: "autotest_very_long_username_0123456789012345678901234567890"
+      nickName: "超长用户名"
+      password: "Test@123456"
+    expect_code: 500
+
+  # 故意用已存在的 admin，验证唯一性校验
+  - desc: "用户名重复（admin 已存在）"
+    data:
+      userName: "admin"
+      nickName: "重复用户名"
+      password: "Test@123456"
+    expect_code: 500
+
+  - desc: "昵称为空"
+    data:
+      userName: "autotest_{uniq}"
+      nickName: ""
+      password: "Test@123456"
+    expect_code: 500
+
+  # ---------------- ★ 已发现缺陷：服务端校验缺失 ----------------
+
+  - desc: "密码为空【缺陷：未校验密码非空】"
+    data:
+      userName: "autotest_{uniq}"
+      nickName: "空密码"
+      password: ""
+    expect_code: 500
+    xfail: true
+    xfail_reason: "SysUser.password 缺少 @NotBlank 校验，可创建空密码用户"
+
+  - desc: "用户名含 <script>【缺陷：接口静默修改输入值】"
+    data:
+      userName: "autotest_{uniq}<script>"
+      nickName: "XSS尝试"
+      password: "Test@123456"
+    expect_code: 500
+    xfail: true
+    # 注意：不要写成「未限制特殊字符、可写入 XSS 载荷」——那是错的。
+    # 实测：<script> 被过滤器剥掉了，没有入库（全表搜不到带 <script> 的用户名），
+    #       安全上是有防护的。真正的问题是「提交 A、存了 B、还返回成功」。
+    xfail_reason: "接口返回 200 操作成功，但入库值把 <script> 剥掉了（实测存储值不含 <script>），属静默修改输入值；不是 XSS 存储漏洞"
+
+  # ★ 注意：这里用 {uniq_num} 而不是固定的 12345
+  #   如果用固定值，第二次跑会撞"手机号已存在"返回 500，
+  #   用例变成 xpass（假通过），看起来像缺陷被修好了 —— 实际根本没走到格式校验
+  - desc: "手机号格式非法【缺陷：只校验长度不校验格式】"
+    data:
+      userName: "autotest_{uniq}"
+      nickName: "非法手机号"
+      password: "Test@123456"
+      phonenumber: "{uniq_num}"               # 8 位数字，唯一但非手机号格式
+    expect_code: 500
+    xfail: true
+    xfail_reason: "手机号仅有 @Size(max=11) 长度校验，缺少格式正则，12345678 也能通过"

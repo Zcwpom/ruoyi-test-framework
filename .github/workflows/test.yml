@@ -1,0 +1,49 @@
+name: 接口自动化测试
+
+# 什么时候触发
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:          # 支持在网页上手动点一下就跑
+
+jobs:
+  # ============================================================
+  # 不依赖被测系统的检查 —— 每次提交都跑，几十秒出结果
+  #
+  # 为什么只跑这些：
+  #   接口用例需要若依后端（MySQL + Redis + 8080）在运行，
+  #   CI 机器上没有。真实公司里也是这么分层的：
+  #     单元测试 → 每次提交都跑
+  #     集成测试 → 跑在专门的机器上，或按需触发
+  # ============================================================
+  check:
+    name: 单元测试 / 语法检查 / 用例收集
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 语法检查
+        run: python -m compileall -q api common config tests testcase run.py
+
+      - name: 单元测试（不依赖若依后端）
+        run: pytest tests/ -v
+
+      - name: 用例收集检查
+        # --collect-only 只做「导入 + 收集」，不执行用例。
+        # 能查出：语法错误、import 错误、fixture 名字写错、装饰器参数不合法。
+        # 不需要若依后端在跑。
+        run: pytest testcase/ --collect-only -q

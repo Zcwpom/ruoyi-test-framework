@@ -1,0 +1,26 @@
+# ============================================================
+# 全局配置
+# ============================================================
+
+# 被测系统地址（若依后端默认 8080）
+base_url: "http://localhost:8080"
+
+# 登录账号
+account:
+  username: "admin"
+  password: "admin123"
+
+# 数据库（用于接口跑完后校验数据一致性）
+database:
+  host: "localhost"
+  port: 3306
+  user: "root"
+  password: "123456"
+  database: "ry-vue"
+  charset: "utf8mb4"
+
+# 超时设置（秒）
+timeout: 10
+
+# 是否打印详细日志
+verbose: true
